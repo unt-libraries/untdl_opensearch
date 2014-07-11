@@ -1,0 +1,88 @@
+<?php
+
+/**
+ * @file
+ * Tests searching functionalilty
+ */
+
+class UntdlOpensearchSearchTestCase extends DrupalWebTestCase {
+
+  protected $protectedUser;
+
+  /**
+   * Register Tests.
+   */
+  public static function getInfo() {
+    $info = array(
+      'name' => 'Untdl_Opensearch Search Test',
+      'description' => 'Functional tests for the untdl_opensearch search behavior',
+      'group' => 'untdl_opensearch',
+    );
+
+    return $info;
+  }
+
+  /**
+   * Bootstrap test environment. 
+   */
+  public function setUp() {
+    parent::setUp(array('libraries', 'xautoload', 'untdl_opensearch'));
+
+    $permissions = array(
+      'access administration pages',
+      'search content',
+      'administer search',
+    );
+
+    $this->privilegedUser = $this->drupalCreateUser($permissions);
+
+    $this->drupalLogin($this->privilegedUser);
+
+    $edit = array(
+      'search_active_modules[untdl_opensearch]' => TRUE,
+      'search_active_modules[user]' => FALSE,
+      'search_active_modules[node]' => FALSE,
+      'search_default_module' => 'untdl_opensearch',
+    );
+
+    $this->drupalPost('admin/config/search/settings', $edit, t('Save configuration'));
+
+    $document_field = 'untdl_opensearch_document_url';
+    $document_url = 'http://texashistory.unt.edu/explore/collections/AFWC/opensearch/document/';
+    $edit = array(
+      $document_field => $document_url,
+    );
+    $this->drupalPost('admin/config/search/settings', $edit, t('Save configuration'));
+
+  }
+
+  /**
+   * Test the results are not displayed before executing the search.
+   */
+  public function testNoResultsBeforeExecution() {
+    $this->drupalGet('search/untdl_opensearch');
+
+    $this->assertNoText('Your search yielded no results');
+    $this->assertNoText('Search results');
+  }
+
+  /**
+   * Test search results displayed.
+   */
+  public function testSearchResults() {
+    $this->drupalGet('search/untdl_opensearch/texas');
+    $this->assertText('Search results');
+    $this->assertText('Results 1 - 11');
+  }
+
+  /**
+   * Test URL is properly parsed.
+   */
+  public function testSearchResultUrlParsedCorrectly() {
+    // Search for 'texas' jump to page 2 of result set.
+    $this->drupalGet('search/untdl_opensearch/texas/texas/2');
+
+    // Assert the the page number is not included in the search after Post.
+    $this->assertFieldByName('keys', 'texas/texas');
+  }
+}

@@ -1,0 +1,19 @@
+name = UNT Libraries Digital Collections Opensearch
+description = UNT Libraries Digital Collections Opensearch Search Client
+core = 7.x
+php = 5.3
+package = UNT Digital Libraries
+
+; Dependencies
+dependencies[] = search
+dependencies[] = libraries
+dependencies[] = xautoload
+
+; Tests
+files[] = tests/untdl_opensearch.admin.test
+files[] = tests/untdl_opensearch.search.test
+
+;Stylesheets
+stylesheets[all][] = theme/untdl_opensearch-result.css
+stylesheets[all][] = theme/untdl_opensearch-block.css
+stylesheets[all][] = theme/untdl_opensearch-navigation.css

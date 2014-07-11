@@ -1,0 +1,47 @@
+<?php
+/**
+ * @file
+ * There is no schema associated with this module
+ */
+
+/**
+ * Implements hook_requirements().
+ * 
+ * Prevents from enabling the module if the search client 
+ * library is not installed.
+ */
+function untdl_opensearch_requirements($phase) {
+  $requirements = array();
+  $t = get_t();
+
+  $requirements['opensearch-client'] = array(
+    'title' => $t('Opensearch Search Client Library'),
+  );
+
+  $libraries = libraries_get_libraries();
+  if (isset($libraries['opensearch-client'])) {
+    $requirements['opensearch-client']['severity'] = REQUIREMENT_OK;
+  }
+  else {
+    $requirements['opensearch-client']['severity'] = REQUIREMENT_ERROR;
+    $requirements['opensearch-client']['description'] = $t('The @library library is not install. Please refer to the installation instructions.', array('@library' => 'opensearch-client'));
+  }
+
+  return $requirements;
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function untdl_opensearch_uninstall() {
+  // Remove all the variables.
+  variable_del('untdl_opensearch_document_url');
+  variable_del('untdl_opensearch_search_path');
+  variable_del('untdl_opensearch_show_thumbnail');
+  variable_del('untdl_opensearch_target_blank');
+  variable_del('untdl_opensearch_block_title');
+  variable_del('untdl_opensearch_search_button');
+  variable_del('untdl_opensearch_search_template');
+  variable_del('untdl_opensearch_date_format');
+  variable_del('untdl_opensearch_show_entry_info');
+}

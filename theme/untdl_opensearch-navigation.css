@@ -1,0 +1,9 @@
+.page-next,
+.page-previous,
+.page-numbered {
+  padding: .25em;
+}
+
+.page-links {
+  text-align: center;
+}

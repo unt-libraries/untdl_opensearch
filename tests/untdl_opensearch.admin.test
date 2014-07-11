@@ -1,0 +1,74 @@
+<?php
+
+/**
+ * @file
+ * Tests for Administration configurations
+ */
+
+class UntdlOpensearchAdminTestCase extends DrupalWebTestCase {
+
+  protected $protectedUser;
+
+  /**
+   * Register Test.
+   */
+  public static function getInfo() {
+    $info = array(
+      'name' => 'Untdl_Opensearch Admin Settings Test',
+      'description' => 'Functional tests for the untdl_opensearch Admin menu',
+      'group' => 'untdl_opensearch',
+    );
+
+    return $info;
+  }
+
+  /**
+   * Bootstrap test site.
+   */
+  public function setUp() {
+    // Enable dependent modules.
+    parent::setUp(array('libraries', 'xautoload', 'untdl_opensearch'));
+
+    $this->privilegedUser = $this->drupalCreateUser(array('access administration pages', 'administer search'));
+
+    $this->drupalLogin($this->privilegedUser);
+
+    $edit = array('search_active_modules[untdl_opensearch]' => TRUE);
+    $this->drupalPost('admin/config/search/settings', $edit, t('Save configuration'));
+  }
+
+  /**
+   * Test search settings are saved correctly.
+   */
+  public function testSearchSettingsAreSaved() {
+    $document_field = 'untdl_opensearch_document_url';
+    $document_url = 'http://texashistory.unt.edu/explore/collections/AFWC/opensearch/document/';
+    $edit = array(
+      $document_field => $document_url,
+    );
+    $this->drupalPost('admin/config/search/settings', $edit, t('Save configuration'));
+
+    // Verify the success message was displayed.
+    $this->assertText('The Opensearch Document was retrieved');
+
+    // Assert the the saved values appear in the form after it is saved.
+    $this->assertFieldByName($document_field, $document_url);
+  }
+
+
+  /**
+   * Verify that error messages are displayed properly.
+   */
+  public function testPrettyErrorMessageDisplayed() {
+    $document_field = 'untdl_opensearch_document_url';
+    $wrong_url = 'http://texashistory.unt.edu/explore/ons/AFWC/opensearch/document/';
+    $edit = array(
+      $document_field => $wrong_url,
+    );
+    $this->drupalPost('admin/config/search/settings', $edit, t('Save configuration'));
+
+    // Verify the success message was displayed.
+    $this->assertText('Unable to locate the Opensearch Document at the specified URL');
+
+  }
+}

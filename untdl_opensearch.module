@@ -1,0 +1,201 @@
+<?php
+
+/**
+ * @file
+ * Drupal Opensearch Client
+ * Searches external sites given an Opensearch Description Document
+ */
+
+
+use UntLibraries\OpensearchClient\Client;
+
+/**
+ * Module Root
+ */
+define("UNTDL_OPENSEARCH_ROOT", drupal_get_path('module', 'untdl_opensearch'));
+
+/**
+ * Module Theme Root
+ */
+define("UNTDL_OPENSEARCH_THEME", UNTDL_OPENSEARCH_ROOT . '/theme');
+
+/**
+ * Module Includes Root
+ */
+define("UNTDL_OPENSEARCH_INCLUDES", UNTDL_OPENSEARCH_ROOT . '/includes');
+
+/**
+ * Opensearch Client Library
+ */
+define("UNTDL_OPENSEARCH_CLIENT_LIBRARY", 'opensearch-client');
+
+/**
+ * Includes
+ */
+require_once UNTDL_OPENSEARCH_INCLUDES . '/untdl_opensearch.navigation.inc';
+require_once UNTDL_OPENSEARCH_INCLUDES . '/untdl_opensearch.admin.inc';
+require_once UNTDL_OPENSEARCH_INCLUDES . '/untdl_opensearch.block.inc';
+
+
+/**
+ * Implements hook_libraries_info().
+ *
+ * Utilizes xautoload to autoload the php_search_client
+ */
+function untdl_opensearch_libraries_info() {
+  $lib = array(
+    UNTDL_OPENSEARCH_CLIENT_LIBRARY => array(
+      'name' => 'PHP Opensearch Search Client',
+      'version' => 1,
+      'xautoload' => function ($api) {
+        $api->namespaceRoot('UntLibraries\OpensearchClient', 'src');
+      },
+    ),
+  );
+
+  return $lib;
+}
+
+/**
+ * Implements hook_search_info().
+ */
+function untdl_opensearch_search_info() {
+  $info = array(
+    'title' => 'UNT Libraries Digital Collections Opensearch',
+    'path' => variable_get('untdl_opensearch_search_path', 'untdl_opensearch'),
+    'conditions_callback' => 'untdl_opensearch_condition_callback',
+  );
+
+  return $info;
+}
+
+/**
+ * Implements hook_theme().
+ */
+function untdl_opensearch_theme() {
+  $theme = array(
+    'untdl_opensearch_results' => array(
+      'variables' => array('results' => NULL, 'module' => NULL),
+      'file' => 'untdl_opensearch.pages.inc',
+      'template' => 'untdl_opensearch-results',
+      'path' => UNTDL_OPENSEARCH_THEME,
+    ),
+    'untdl_opensearch_result' => array(
+      'variables' => array('result' => NULL, 'module' => NULL),
+      'file' => 'untdl_opensearch.pages.inc',
+      'template' => 'untdl_opensearch-result',
+      'path' => UNTDL_OPENSEARCH_THEME,
+    ),
+    'untdl_opensearch_navigation' => array(
+      'variables' => array('page_info' => NULL, 'module' => NULL),
+      'file' => 'untdl_opensearch.pages.inc',
+      'template' => 'untdl_opensearch-navigation',
+      'path' => UNTDL_OPENSEARCH_THEME,
+    ),
+  );
+
+  return $theme;
+}
+
+/**
+ * Implements hook_menu_alter().
+ *
+ * Redirects an callback to custom module function
+ * @see untdl_opensearch_search_view()
+ */
+function untdl_opensearch_menu_alter(&$items) {
+  $search_path = variable_get('untdl_opensearch_search_path', 'untdl_opensearch');
+  $items['search/' . $search_path . '/%menu_tail']['page callback'] = 'untdl_opensearch_search_view';
+}
+
+/**
+ * Menu alter callback function.
+ *
+ * Gets the search keys from the query string and checks for an
+ * appending '/%number'. If present, it strips and sets the number in 
+ * $_REQUEST['page'], which is then passed the the search conditions 
+ * array.
+ * 
+ * After preprocessing $keys, search_view is call and result is returned
+ * from this function.
+ */
+function untdl_opensearch_search_view($module = NULL, $keys = '') {
+  if (preg_match('/\/(?=\d+$)/', $keys)) {
+    list($keys, $page) = preg_split('/\/(?=\d+$)/', $keys);
+    $_REQUEST['page'] = (int) $page;
+  }
+
+  if (module_exists('search')) {
+    $build = search_view($module, $keys);
+    return $build;
+  }
+}
+
+/**
+ * Callback function for hook_search_info().
+ * 
+ * Guarantees that the page number is available as a search condition
+ */
+function untdl_opensearch_condition_callback($keys) {
+  $conditions = array();
+
+  if (!empty($_REQUEST['page'])) {
+    $conditions['page'] = $_REQUEST['page'];
+  }
+  else {
+    $conditions['page'] = 1;
+  }
+
+  return $conditions;
+}
+
+/**
+ * Implements hook_search_page().
+ */
+function untdl_opensearch_search_page($results) {
+  $output[] = array(
+    '#theme' => 'untdl_opensearch_results',
+    '#results' => $results,
+    '#module' => 'untdl_opensearch',
+  );
+
+  return $output;
+}
+
+/**
+ * Implements hook_search_execute().
+ */
+function untdl_opensearch_search_execute($keys, $conditions) {
+  if (variable_get('untdl_opensearch_search_template', FALSE)) {
+    $search_terms = explode(' ', $keys);
+    $search_terms = array_filter($search_terms);
+    $template_url = variable_get('untdl_opensearch_search_template', FALSE);
+
+    isset($conditions['page']) ? $page = $conditions['page'] : $page = 1;
+
+    $search_client = new Client();
+    if (!empty($search_terms)) {
+      $search_client->searchQuery
+        ->setSearchTerms($search_terms)
+        ->setStartPage($page);
+
+      try {
+        $search_client->search($template_url);
+        $search_client->navigation = new UntdlNavigation($search_client);
+      }
+      catch (Exception $e) {
+        drupal_set_message($e->getMessage());
+        $search_client->executed = FALSE;
+      }
+
+    }
+    else {
+      $search_client->executed = FALSE;
+    }
+
+    return $search_client;
+  }
+  else {
+    drupal_set_message('A search template has not been identified. Please verify the URL to the Opensearch Description Document.', 'warning');
+  }
+}

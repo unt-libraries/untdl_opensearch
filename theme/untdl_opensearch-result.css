@@ -1,0 +1,17 @@
+.untdl-opensearch-results li {
+  margin-bottom: 3em;
+}
+
+.untdl-opensearch-results .thumbnail {
+  float: left;
+  padding: 1em;
+  width: 9em;
+}
+
+.untdl-opensearch-result .search-snippet {
+  margin-bottom: 1em;
+}
+
+.untdl-opensearch-results .search-info {
+  clear: both;
+}
